@@ -94,22 +94,29 @@ function render() {
     const dimEl = card.querySelector('.dimensions');
     const rateEl = card.querySelector('.rate');
     const dims = [product.length ? `L:${product.length}` : null, product.width ? `W:${product.width}` : null, product.thickness ? `T:${product.thickness}` : null].filter(Boolean).join(' ');
-    const hasDims = !!dims;
-    const hasRate = product.rate != null;
     if (dimEl) {
-      if (hasDims) {
+      if (dims) {
         dimEl.textContent = dims;
-        dimEl.title = `Length/Width/Thickness`;
+        dimEl.title = `Length/Width/Thickness actual`;
+        dimEl.parentElement.style.opacity = '';
       } else {
         dimEl.textContent = '—';
         dimEl.title = 'Pending full HTML crawl - auto-refresh will fill';
+        dimEl.parentElement.style.opacity = '0.6';
       }
     }
-    if (rateEl) rateEl.textContent = hasRate ? `₹${product.rate}/g` : '—';
-    // hide entire Dimensions/Rate row if both missing (only hotfixed #13 has both)
-    if (!hasDims && !hasRate) {
-      const row = dimEl?.closest('.numbers');
-      if (row) row.style.display = 'none';
+    if (rateEl) {
+      if (product.rate != null) {
+        rateEl.textContent = `₹${product.rate}/g`;
+        rateEl.title = 'Actual Rate from Metal Details';
+      } else if (product.gold_value && product.weight_proxy_g) {
+        const proxyRate = Math.round(product.gold_value / product.weight_proxy_g);
+        rateEl.textContent = `₹${proxyRate}/g (proxy)`;
+        rateEl.title = 'Proxy: gold_value / weight_proxy (gold ticker 14190)';
+        rateEl.parentElement.style.opacity = '0.6';
+      } else {
+        rateEl.textContent = '—';
+      }
     }
     card.querySelector('.value-ratio').textContent = ratio(product.value_ratio);
     card.querySelector('.va-value').textContent = va(product.value_ratio);

@@ -32,8 +32,8 @@ jobs:
 
       - name: Run scraper (resume)
         run: |
-          python scrape_bhima_gold.py --expected-count 3294 --concurrency 6 --output-dir output-full-15 --resume --batch-size 100 || \
-          python scrape_bhima_gold.py --expected-count 3294 --concurrency 4 --output-dir output-full-15 --resume
+          python scrape_bhima_gold.py --expected-count 9925 --concurrency 6 --output-dir output-full-15 --resume --batch-size 100 || \
+          python scrape_bhima_gold.py --expected-count 9925 --concurrency 4 --output-dir output-full-15 --resume
         continue-on-error: true
 
       - name: Enrich with weight/making/gold ticker

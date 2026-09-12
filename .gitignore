@@ -1,0 +1,20 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.py[cod]
+
+# Browser profiles and local browser state
+.browser-profile/
+chrome-profile/
+chrome-profile-run/
+
+# Generated scrape results and checkpoints
+output/
+output-full/
+output-full-20/
+
+
+# Local editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db

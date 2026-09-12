@@ -1,2 +1,2 @@
-beautifulsoup4==4.12.3
-playwright==1.55.0
+# Vercel dashboard has no Python deps (uses stdlib only)
+# Scraper deps are in requirements-scraper.txt

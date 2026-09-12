@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bhima Gold | Value desk</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">BG</span><span>Bhima Gold <em>value desk</em></span></div>
+    <div class="top-actions"><span id="sourceBadge" class="status">Loading data</span><button id="refreshButton" class="button button-dark" type="button">Refresh data</button></div>
+  </header>
+  <main class="shell">
+    <section class="intro">
+      <div>
+        <p class="kicker">GOLD CATALOG / VALUE INTELLIGENCE</p>
+        <h1>Find the gold<br><span>inside the price.</span></h1>
+        <p class="lede">Search the catalogue by style, audience, or category. The desk ranks products by gold value divided by grand total.</p>
+      </div>
+      <div class="equation"><strong>Value ratio</strong><span>Gold value / Grand total</span><small>Lower VA proxy is better</small></div>
+    </section>
+    <section class="stats" aria-label="Summary">
+      <div><span>Products loaded</span><strong id="totalCount">--</strong></div>
+      <div><span>Visible results</span><strong id="visibleCount">--</strong></div>
+      <div><span>Best ratio</span><strong id="bestRatio">--</strong></div>
+      <div><span>Best VA proxy</span><strong id="bestVa">--</strong></div>
+    </section>
+    <section class="workspace">
+      <aside class="filters">
+        <div class="filter-head"><h2>Refine</h2><button id="clearButton" class="text-button" type="button">Clear all</button></div>
+        <label class="search-box"><span>Search catalogue</span><input id="searchInput" type="search" placeholder="Try chain, men, studs..."></label>
+        <div class="filter-group"><label for="minPrice">Price range</label><div class="two-inputs"><input id="minPrice" type="number" min="0" placeholder="Min ₹"><input id="maxPrice" type="number" min="0" placeholder="Max ₹"></div></div>
+        <div class="filter-group"><label for="minRatio">Minimum value ratio</label><div class="range-line"><input id="minRatio" type="range" min="0" max="100" value="0"><output id="ratioOutput">0%</output></div><small>Higher ratio means lower effective VA.</small></div>
+        <div class="filter-group"><label for="puritySelect">Purity</label><select id="puritySelect"><option value="">All purities</option></select></div>
+        <div class="filter-group"><label for="categorySelect">Product type</label><select id="categorySelect"><option value="">All product types</option></select></div>
+        <label class="check-row"><input id="favoritesOnly" type="checkbox"><span>Show saved shortlist only</span></label>
+        <button id="exportButton" class="button button-outline" type="button">Export current view</button>
+      </aside>
+      <section class="results">
+        <div class="results-head"><div><p class="kicker">LIVE RANKING</p><h2>Best value first</h2></div><label class="sort-control">Sort by <select id="sortSelect"><option value="ratio">Value ratio</option><option value="va">Lowest VA proxy</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="name">Name</option></select></label></div>
+        <div id="notice" class="notice" hidden></div>
+        <div id="productGrid" class="product-grid"></div>
+      </section>
+    </section>
+  </main>
+  <template id="productTemplate"><article class="product-card"><div class="rank-line"><span class="rank"></span><button class="save-button" type="button" aria-label="Save product">☆</button></div><h3 class="product-name"></h3><div class="chips"><span class="purity-chip"></span><span class="category-chip"></span></div><div class="numbers"><div><span>Grand total</span><strong class="grand-total"></strong></div><div><span>Gold value</span><strong class="gold-value"></strong></div></div><div class="ratio-row"><div><span>Value ratio</span><strong class="value-ratio"></strong></div><div class="va"><span>VA proxy</span><strong class="va-value"></strong></div></div><a class="product-link" target="_blank" rel="noreferrer">View product <span>↗</span></a></article></template>
+  <script src="app.js"></script>
+</body>
+</html>

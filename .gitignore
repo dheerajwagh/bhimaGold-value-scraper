@@ -18,3 +18,5 @@ output-full-20/
 .vscode/
 .DS_Store
 Thumbs.db
+.vercel
+.env*

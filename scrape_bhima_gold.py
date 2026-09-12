@@ -22,6 +22,8 @@ CATEGORY_URL = "https://www.bhimagold.com/jewellery/gold"
 PRODUCT_API_URL = "https://prod-apis.bhimagold.com/api/app/product/products"
 ORG_ID = "1653277918007"
 PRODUCT_PATH = "/products/"
+# global map for API fallback when Cloudflare blocks HTML
+API_PRODUCT_MAP: dict[str, dict] = {}
 MONEY_RE = re.compile(r"(?:₹|Rs\.?|INR)?\s*(\d[\d,]*(?:\.\d{1,2})?)", re.IGNORECASE)
 GOLD_LABEL_RE = re.compile(r"\bgold\s*(?:\d{1,2}\s*k|\d{1,3}\s*kt)?\b", re.IGNORECASE)
 TOTAL_LABEL_RE = re.compile(r"grand\s*total|total\s*amount|payable", re.IGNORECASE)
@@ -174,6 +176,26 @@ def parse_product(html: str, url: str, fallback_name: str) -> Product:
                    gross_weight, metal_weight, stone_weight, length, width, thickness,
                    rate, making, gst, discount, subtotal, product_total)
 
+async def fetch_product_api(slug: str) -> dict | None:
+    # fallback to productList API search for slug - runs in thread to not block
+    def _fetch():
+        try:
+            import urllib.request, urllib.parse, json
+            # try direct productList search via page 1..5 first for speed
+            for page in range(1, 6):
+                q = urllib.parse.urlencode({"orgId": ORG_ID, "locale": "en-IN", "country": "en-IN", "pageNumber": str(page), "listSlug": "gold", "urlSlug": "gold"})
+                req = urllib.request.Request(f"{PRODUCT_API_URL}?{q}", headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = json.load(r).get("data", {})
+                    for item in data.get("productList", []):
+                        if item.get("slug") == slug:
+                            variant = (item.get("variantItems") or [{}])[0]
+                            return {"price": variant.get("price"), "special_price": variant.get("priceDiscounted"), "image": item.get("image")}
+            return None
+        except Exception:
+            return None
+    return await asyncio.to_thread(_fetch)
+
 
 async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[str, str]]:
     # Try API first (no Cloudflare), fallback to category page only if API fails
@@ -189,6 +211,7 @@ async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[s
         print(f"Warning: Category page goto failed {e}, falling back to API", flush=True)
 
     found: dict[str, str] = {}
+    API_PRODUCT_MAP.clear()
     page_number = 1
     api_count = expected_count
     while len(found) < min(expected_count, api_count):
@@ -216,7 +239,16 @@ async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[s
         for item in items:
             slug = item.get("slug")
             if slug:
-                found[urljoin(CATEGORY_URL, f"/products/{slug}")] = item.get("title", slug)
+                url = urljoin(CATEGORY_URL, f"/products/{slug}")
+                found[url] = item.get("title", slug)
+                # store for fallback
+                variant = (item.get("variantItems") or [{}])[0]
+                API_PRODUCT_MAP[url] = {
+                    "price": variant.get("price"),
+                    "special_price": variant.get("priceDiscounted"),
+                    "image": item.get("image") or variant.get("image"),
+                    "category": item.get("CategoryName"),
+                }
         if not items:
             break
         page_number += 1
@@ -273,8 +305,38 @@ async def scrape_products(
                 except asyncio.QueueEmpty:
                     break
                 try:
-                    await page.goto(url, wait_until="domcontentloaded", timeout=90_000)
+                    response = await page.goto(url, wait_until="domcontentloaded", timeout=90_000)
                     await page.wait_for_timeout(500)
+                    # check Cloudflare 403 for product page - fallback to API map from discovery
+                    if response and response.status == 403:
+                        body = (await page.content()).lower()
+                        if "cloudflare" in body:
+                            api_data = API_PRODUCT_MAP.get(url) or API_PRODUCT_MAP.get(url.split("?")[0].split("#")[0])
+                            # try slug-based lookup
+                            if not api_data:
+                                slug = url.split("/")[-1].split("?")[0].split("#")[0]
+                                for k, v in API_PRODUCT_MAP.items():
+                                    if slug in k:
+                                        api_data = v
+                                        break
+                            if api_data:
+                                price = api_data.get("special_price") or api_data.get("price")
+                                if price:
+                                    # price is in paise? convert if >10000
+                                    try:
+                                        pval = float(price)
+                                        # API price is in paise (e.g., 4237200 = 42372 INR), convert
+                                        grand = pval/100 if pval>100000 else pval
+                                        # estimate gold_value as 92% of grand (approx)
+                                        gold_est = round(grand*0.92,2)
+                                        results[index] = Product(fallback_name, url, gold_value=gold_est, grand_total=grand, error="Cloudflare 403 - API fallback (gold est)")
+                                    except:
+                                        results[index] = Product(fallback_name, url, error="Cloudflare 403 - API parse fail")
+                                else:
+                                    results[index] = Product(fallback_name, url, error="Cloudflare 403 and API no price")
+                            else:
+                                results[index] = Product(fallback_name, url, error="Cloudflare 403 - no API map")
+                            continue
                     results[index] = parse_product(await page.content(), url, fallback_name)
                 except Exception as exc:
                     results[index] = Product(

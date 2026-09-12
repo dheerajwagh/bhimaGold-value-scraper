@@ -34,6 +34,8 @@
         <div class="filter-group"><label for="minRatio">Minimum value ratio</label><div class="range-line"><input id="minRatio" type="range" min="0" max="100" value="0"><output id="ratioOutput">0%</output></div><small>Higher ratio means lower effective VA.</small></div>
         <div class="filter-group"><label for="puritySelect">Purity</label><select id="puritySelect"><option value="">All purities</option></select></div>
         <div class="filter-group"><label for="categorySelect">Product type</label><select id="categorySelect"><option value="">All product types</option></select></div>
+        <div class="filter-group"><label for="audienceSelect">Audience</label><select id="audienceSelect"><option value="">All audiences</option></select></div>
+        <div class="filter-group"><label for="sizeSelect">Size</label><select id="sizeSelect" disabled><option value="">Not in dataset</option></select><small style="color:var(--muted);font-size:11px;">Size not stored (see note below)</small></div>
         <label class="check-row"><input id="favoritesOnly" type="checkbox"><span>Show saved shortlist only</span></label>
         <button id="exportButton" class="button button-outline" type="button">Export current view</button>
       </aside>
@@ -44,7 +46,7 @@
       </section>
     </section>
   </main>
-  <template id="productTemplate"><article class="product-card"><div class="rank-line"><span class="rank"></span><button class="save-button" type="button" aria-label="Save product">☆</button></div><h3 class="product-name"></h3><div class="chips"><span class="purity-chip"></span><span class="category-chip"></span></div><div class="numbers"><div><span>Grand total</span><strong class="grand-total"></strong></div><div><span>Gold value</span><strong class="gold-value"></strong></div></div><div class="ratio-row"><div><span>Value ratio</span><strong class="value-ratio"></strong></div><div class="va"><span>VA proxy</span><strong class="va-value"></strong></div></div><a class="product-link" target="_blank" rel="noreferrer">View product <span>↗</span></a></article></template>
+  <template id="productTemplate"><article class="product-card"><div class="rank-line"><span class="rank"></span><button class="save-button" type="button" aria-label="Save product">☆</button></div><h3 class="product-name"></h3><div class="chips"><span class="purity-chip"></span><span class="category-chip"></span><span class="audience-chip"></span></div><div class="numbers"><div><span>Grand total</span><strong class="grand-total"></strong></div><div><span>Gold value</span><strong class="gold-value"></strong></div></div><div class="ratio-row"><div><span>Value ratio</span><strong class="value-ratio"></strong></div><div class="va"><span>VA proxy</span><strong class="va-value"></strong></div></div><a class="product-link" target="_blank" rel="noreferrer">View product <span>↗</span></a></article></template>
   <script src="app.js"></script>
 </body>
 </html>

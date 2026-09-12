@@ -1,0 +1,50 @@
+name: Daily Bhima Gold Scrape
+
+on:
+  schedule:
+    # 04:00 IST = 22:30 UTC previous day
+    - cron: '30 22 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install deps
+        run: |
+          python -m pip install -r requirements-scraper.txt
+          python -m pip install -r requirements.txt 2>/dev/null || true
+          python -m playwright install chromium
+          python -m playwright install-deps chromium
+
+      - name: Run scraper (resume)
+        run: |
+          python scrape_bhima_gold.py --expected-count 3294 --concurrency 6 --output-dir output-full-15 --resume --batch-size 100 || \
+          python scrape_bhima_gold.py --expected-count 3294 --concurrency 4 --output-dir output-full-15 --resume
+        continue-on-error: true
+
+      - name: Enrich with weight/making/gold ticker
+        run: |
+          python enrich_fast.py || echo "enrich failed, keeping old"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output-full-15/bhima_gold_ranked.json output-full-15/bhima_gold_ranked.csv api/bhima_gold_ranked.json public/gold_rate.json history/ || true
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "Auto-refresh: $(date -u +%Y-%m-%d) scrape"
+          git push origin main

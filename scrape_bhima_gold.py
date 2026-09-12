@@ -35,6 +35,19 @@ class Product:
     grand_total: float | None = None
     value_ratio: float | None = None
     error: str | None = None
+    # extended fields from Product Details / Metal Details
+    gross_weight: float | None = None
+    metal_weight: float | None = None
+    stone_weight: float | None = None
+    length: str | None = None
+    width: str | None = None
+    thickness: str | None = None
+    rate: float | None = None
+    making_charges: float | None = None
+    gst: float | None = None
+    discount: float | None = None
+    subtotal: float | None = None
+    product_total: float | None = None
 
 
 def parse_money_values(text: str) -> list[float]:
@@ -62,6 +75,45 @@ def candidate_rows(soup: BeautifulSoup) -> Iterable[str]:
             yield text
 
 
+def extract_detail(soup: BeautifulSoup, label: str) -> str | None:
+    # look for Product Details: label like "Gross weight:" or "Length:"
+    for el in soup.select("tr, li, p, div"):
+        txt = " ".join(el.get_text(" ", strip=True).split())
+        if not txt:
+            continue
+        # case-insensitive label match with colon
+        if re.search(rf"\b{re.escape(label)}\s*:", txt, re.I):
+            # return value after colon
+            parts = re.split(rf"{re.escape(label)}\s*:", txt, flags=re.I)
+            if len(parts) > 1:
+                val = parts[1].split("  ")[0].strip()
+                # clean up trailing labels
+                val = re.split(r"\s{2,}| \b[A-Z][a-z]+:", val)[0].strip()
+                return val or None
+    # fallback search in page text
+    page_text = " ".join(soup.stripped_strings)
+    m = re.search(rf"{re.escape(label)}\s*:\s*([^:]+?)(?:\s+[A-Z][a-z]+:|$)", page_text, re.I)
+    if m:
+        return m.group(1).strip().split("  ")[0]
+    return None
+
+def parse_weight_value(text: str | None) -> float | None:
+    if not text:
+        return None
+    m = re.search(r"([\d,.]+)\s*g", text, re.I)
+    if m:
+        try:
+            return float(m.group(1).replace(",", ""))
+        except:
+            return None
+    m2 = re.search(r"([\d,.]+)", text)
+    if m2:
+        try:
+            return float(m2.group(1).replace(",", ""))
+        except:
+            return None
+    return None
+
 def parse_product(html: str, url: str, fallback_name: str) -> Product:
     soup = BeautifulSoup(html, "html.parser")
     title = soup.find("h1")
@@ -77,8 +129,6 @@ def parse_product(html: str, url: str, fallback_name: str) -> Product:
         if TOTAL_LABEL_RE.search(row):
             total_candidates.extend(values)
 
-    # Prefer the final amount in a matching row: the site displays rate, weight,
-    # and then the rupee value for gold; total rows likewise end with the amount.
     gold_value = gold_candidates[-1] if gold_candidates else None
     grand_total = total_candidates[-1] if total_candidates else None
 
@@ -89,17 +139,40 @@ def parse_product(html: str, url: str, fallback_name: str) -> Product:
             if gold_match:
                 gold_value = float(gold_match.group(1).replace(",", ""))
         if grand_total is None:
-            total_match = re.search(
-                r"grand\s*total.{0,100}?₹?\s*([\d,]+(?:\.\d{1,2})?)",
-                page_text,
-                re.IGNORECASE,
-            )
+            total_match = re.search(r"grand\s*total.{0,100}?₹?\s*([\d,]+(?:\.\d{1,2})?)", page_text, re.IGNORECASE)
             if total_match:
                 grand_total = float(total_match.group(1).replace(",", ""))
 
+    # extended Product Details
+    gross_weight = parse_weight_value(extract_detail(soup, "Gross weight"))
+    metal_weight = parse_weight_value(extract_detail(soup, "Metal weight"))
+    stone_weight = parse_weight_value(extract_detail(soup, "Stone weight"))
+    length = extract_detail(soup, "Length")
+    width = extract_detail(soup, "Width")
+    thickness = extract_detail(soup, "Thickness")
+
+    # Metal Details table - parse money values with labels
+    page_text = " ".join(soup.stripped_strings)
+    def find_money(label):
+        m = re.search(rf"{label}.{{0,80}}?₹\s*([\d,]+(?:\.\d{{1,2}})?)", page_text, re.I)
+        if m:
+            try: return float(m.group(1).replace(",", ""))
+            except: return None
+        return None
+    rate = find_money("Gold 22K")
+    if rate is None:
+        rate = find_money(r"Rate")
+    making = find_money("Making Charges")
+    gst = find_money(r"\bGST\b")
+    discount = find_money("Discount")
+    subtotal = find_money("Subtotal")
+    product_total = find_money("Product Total")
+
     ratio = gold_value / grand_total if gold_value and grand_total else None
     error = None if ratio is not None else "Could not find both gold value and grand total"
-    return Product(name, url, gold_value, grand_total, ratio, error)
+    return Product(name, url, gold_value, grand_total, ratio, error,
+                   gross_weight, metal_weight, stone_weight, length, width, thickness,
+                   rate, making, gst, discount, subtotal, product_total)
 
 
 async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[str, str]]:
@@ -230,7 +303,9 @@ async def scrape_products(
 def write_outputs(products: list[Product], output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     ranked = sorted(products, key=lambda product: product.value_ratio or -1, reverse=True)
-    fields = ["rank", "name", "url", "gold_value", "grand_total", "value_ratio", "error"]
+    fields = ["rank", "name", "url", "gold_value", "grand_total", "value_ratio", "error",
+              "gross_weight", "metal_weight", "stone_weight", "length", "width", "thickness",
+              "rate", "making_charges", "gst", "discount", "subtotal", "product_total"]
     with (output_dir / "bhima_gold_ranked.csv").open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fields)
         writer.writeheader()

@@ -23,7 +23,7 @@ function filteredProducts() {
   const favoritesOnly = $('favoritesOnly').checked;
   const filtered = state.products.filter((product) => {
     const name = product.name || '';
-    const w = product.weight_proxy_g ?? 0;
+    const w = product.gross_weight ?? product.metal_weight ?? product.weight_proxy_g ?? 0;
     const col = collectionOf(product);
     return product.value_ratio != null
       && (!query || name.toLowerCase().includes(query))
@@ -79,9 +79,26 @@ function render() {
     card.querySelector('.grand-total').textContent = money(product.grand_total);
     card.querySelector('.gold-value').textContent = money(product.gold_value);
     const wEl = card.querySelector('.weight');
-    if (wEl) wEl.textContent = product.weight_proxy_g != null ? `${product.weight_proxy_g} g` : '--';
+    if (wEl) {
+      const actual = product.gross_weight ?? product.metal_weight ?? product.weight_proxy_g;
+      const label = product.gross_weight != null ? `${actual} g` : product.weight_proxy_g != null ? `${actual} g (proxy)` : '--';
+      wEl.textContent = label;
+      wEl.title = product.gross_weight ? `Actual gross: ${product.gross_weight}g` : `Proxy from gold_value / rate`;
+    }
     const mEl = card.querySelector('.making');
-    if (mEl) mEl.textContent = product.making_charges_proxy != null ? `${money(product.making_charges_proxy)} (${product.making_pct ?? '--'}%)` : '--';
+    if (mEl) {
+      const making = product.making_charges ?? product.making_charges_proxy;
+      const pct = product.making_pct ?? (making && product.grand_total ? (making/product.grand_total*100).toFixed(2) : null);
+      mEl.textContent = making != null ? `${money(making)}${pct ? ` (${pct}%)` : ''}` : '--';
+    }
+    const dimEl = card.querySelector('.dimensions');
+    if (dimEl) {
+      const dims = [product.length ? `L:${product.length}` : null, product.width ? `W:${product.width}` : null, product.thickness ? `T:${product.thickness}` : null].filter(Boolean).join(' ');
+      dimEl.textContent = dims || (product.gross_weight ? `${product.gross_weight}g` : '--');
+      dimEl.title = `Length/Width/Thickness`;
+    }
+    const rateEl = card.querySelector('.rate');
+    if (rateEl) rateEl.textContent = product.rate ? `₹${product.rate}/g` : '--';
     card.querySelector('.value-ratio').textContent = ratio(product.value_ratio);
     card.querySelector('.va-value').textContent = va(product.value_ratio);
     const link = card.querySelector('.product-link');

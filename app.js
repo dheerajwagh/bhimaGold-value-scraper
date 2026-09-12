@@ -92,19 +92,25 @@ function render() {
       mEl.textContent = making != null ? `${money(making)}${pct ? ` (${pct}%)` : ''}` : '--';
     }
     const dimEl = card.querySelector('.dimensions');
+    const rateEl = card.querySelector('.rate');
+    const dims = [product.length ? `L:${product.length}` : null, product.width ? `W:${product.width}` : null, product.thickness ? `T:${product.thickness}` : null].filter(Boolean).join(' ');
+    const hasDims = !!dims;
+    const hasRate = product.rate != null;
     if (dimEl) {
-      const dims = [product.length ? `L:${product.length}` : null, product.width ? `W:${product.width}` : null, product.thickness ? `T:${product.thickness}` : null].filter(Boolean).join(' ');
-      if (dims) {
+      if (hasDims) {
         dimEl.textContent = dims;
         dimEl.title = `Length/Width/Thickness`;
       } else {
         dimEl.textContent = '—';
         dimEl.title = 'Pending full HTML crawl - auto-refresh will fill';
-        dimEl.parentElement.style.opacity = '0.5';
       }
     }
-    const rateEl = card.querySelector('.rate');
-    if (rateEl) rateEl.textContent = product.rate ? `₹${product.rate}/g` : '—';
+    if (rateEl) rateEl.textContent = hasRate ? `₹${product.rate}/g` : '—';
+    // hide entire Dimensions/Rate row if both missing (only hotfixed #13 has both)
+    if (!hasDims && !hasRate) {
+      const row = dimEl?.closest('.numbers');
+      if (row) row.style.display = 'none';
+    }
     card.querySelector('.value-ratio').textContent = ratio(product.value_ratio);
     card.querySelector('.va-value').textContent = va(product.value_ratio);
     const link = card.querySelector('.product-link');

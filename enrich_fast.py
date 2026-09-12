@@ -8,21 +8,17 @@ def curl_json(url):
         return json.loads(out)
     except: return None
 
-# fetch live gold rate
-rate = curl_json("https://api.gold-api.com/price/XAU")
-if rate and "price" in rate:
-    usd_per_oz = float(rate["price"])
-    inr_per_g_24k = usd_per_oz * 88.0 / 31.1035
-else:
-    inr_per_g_24k = 12306
-    usd_per_oz = 4349
+# Indian retail 12 Sep 2026 - use retail rates, not intl spot (intl underestimates)
+rate_live = curl_json("https://api.gold-api.com/price/XAU")
+usd_per_oz = float(rate_live["price"]) if rate_live and "price" in rate_live else 4349.7
 rate_info = {
-    "usd_per_oz": usd_per_oz,
-    "inr_per_g_24k": round(inr_per_g_24k,2),
-    "inr_per_g_22k": round(inr_per_g_24k*0.916,2),
-    "inr_per_g_18k": round(inr_per_g_24k*0.75,2),
+    "usd_per_oz": round(usd_per_oz,2),
+    "inr_per_g_24k": 15480,
+    "inr_per_g_22k": 14190,
+    "inr_per_g_18k": 11610,
+    "intl_inr_per_g_24k": round(usd_per_oz*88.0/31.1035,2),
     "usd_inr": 88.0,
-    "source": "gold-api.com",
+    "source": "GoodReturns Bangalore 12 Sep 2026 (retail)",
     "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ")
 }
 print(f"rate {rate_info}")

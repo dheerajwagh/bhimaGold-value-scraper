@@ -60,11 +60,19 @@ function render() {
     card.querySelector('.rank').textContent = `#${index + 1}`;
     card.querySelector('.product-name').textContent = product.name;
     card.querySelector('.purity-chip').textContent = product.purity || purityOf(product.name);
-    card.querySelector('.category-chip').textContent = categoryOf(product.name);
+    const catText = categoryOf(product.name);
+    card.querySelector('.category-chip').textContent = catText;
     const audChip = card.querySelector('.audience-chip');
     audChip.textContent = product.audience || audienceOf(product.name);
     const colChip = card.querySelector('.collection-chip');
-    colChip.textContent = collectionOf(product);
+    const colText = collectionOf(product);
+    // hide duplicate BANGLE chip (collection same as category)
+    if (colText && colText.toLowerCase() === catText.toLowerCase()) {
+      colChip.style.display = 'none';
+    } else {
+      colChip.textContent = colText;
+      colChip.style.display = '';
+    }
     // image
     const img = card.querySelector('.product-image');
     if (product.image) { img.src = product.image; img.style.display = 'block'; img.onerror = () => img.style.display='none'; }

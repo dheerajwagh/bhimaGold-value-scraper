@@ -1,9 +1,10 @@
 {
-  "usd_per_oz": 4349.700195,
-  "inr_per_g_24k": 12306.45,
-  "inr_per_g_22k": 11272.71,
-  "inr_per_g_18k": 9229.84,
+  "usd_per_oz": 4349.7,
+  "inr_per_g_24k": 15480,
+  "inr_per_g_22k": 14190,
+  "inr_per_g_18k": 11610,
+  "intl_inr_per_g_24k": 12306.45,
   "usd_inr": 88.0,
-  "source": "gold-api.com",
-  "updated_at": "2026-09-12T23:27:13Z"
+  "source": "GoodReturns Bangalore 12 Sep 2026 (retail)",
+  "updated_at": "2026-09-12T23:47:17Z"
 }

@@ -9,7 +9,7 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-mark">BG</span><span>Bhima Gold <em>value desk</em></span></div>
-    <div class="top-actions"><span id="sourceBadge" class="status">Loading data</span><button id="refreshButton" class="button button-dark" type="button">Refresh data</button></div>
+    <div class="top-actions"><span id="goldRateBadge" class="status">Gold 22K: --</span><span id="sourceBadge" class="status">Loading data</span><button id="refreshButton" class="button button-dark" type="button">Refresh data</button></div>
   </header>
   <main class="shell">
     <section class="intro">
@@ -35,18 +35,20 @@
         <div class="filter-group"><label for="puritySelect">Purity</label><select id="puritySelect"><option value="">All purities</option></select></div>
         <div class="filter-group"><label for="categorySelect">Product type</label><select id="categorySelect"><option value="">All product types</option></select></div>
         <div class="filter-group"><label for="audienceSelect">Audience</label><select id="audienceSelect"><option value="">All audiences</option></select></div>
-        <div class="filter-group"><label for="sizeSelect">Size</label><select id="sizeSelect" disabled><option value="">Not in dataset</option></select><small style="color:var(--muted);font-size:11px;">Size not stored (see note below)</small></div>
+        <div class="filter-group"><label for="weightRange">Weight (proxy, g)</label><div class="two-inputs"><input id="minWeight" type="number" min="0" step="0.5" placeholder="Min g"><input id="maxWeight" type="number" min="0" step="0.5" placeholder="Max g"></div><small>Estimated from gold value / live rate</small></div>
+        <div class="filter-group"><label for="collectionSelect">Collection</label><select id="collectionSelect"><option value="">All collections</option></select></div>
+        <div class="filter-group"><label for="sizeSelect">Size</label><select id="sizeSelect" disabled><option value="">Not in dataset</option></select><small style="color:var(--muted);font-size:11px;">Size not in API (needs detail scrape)</small></div>
         <label class="check-row"><input id="favoritesOnly" type="checkbox"><span>Show saved shortlist only</span></label>
         <button id="exportButton" class="button button-outline" type="button">Export current view</button>
       </aside>
       <section class="results">
-        <div class="results-head"><div><p class="kicker">LIVE RANKING</p><h2>Best value first</h2></div><label class="sort-control">Sort by <select id="sortSelect"><option value="ratio">Value ratio</option><option value="va">Lowest VA proxy</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="name">Name</option></select></label></div>
+        <div class="results-head"><div><p class="kicker">LIVE RANKING</p><h2>Best value first</h2></div><label class="sort-control">Sort by <select id="sortSelect"><option value="ratio">Value ratio</option><option value="va">Lowest VA proxy</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option><option value="weight-low">Weight: low to high</option><option value="weight-high">Weight: high to low</option><option value="making-low">Making: low to high</option><option value="name">Name</option></select></label></div>
         <div id="notice" class="notice" hidden></div>
         <div id="productGrid" class="product-grid"></div>
       </section>
     </section>
   </main>
-  <template id="productTemplate"><article class="product-card"><div class="rank-line"><span class="rank"></span><button class="save-button" type="button" aria-label="Save product">☆</button></div><h3 class="product-name"></h3><div class="chips"><span class="purity-chip"></span><span class="category-chip"></span><span class="audience-chip"></span></div><div class="numbers"><div><span>Grand total</span><strong class="grand-total"></strong></div><div><span>Gold value</span><strong class="gold-value"></strong></div></div><div class="ratio-row"><div><span>Value ratio</span><strong class="value-ratio"></strong></div><div class="va"><span>VA proxy</span><strong class="va-value"></strong></div></div><a class="product-link" target="_blank" rel="noreferrer">View product <span>↗</span></a></article></template>
+  <template id="productTemplate"><article class="product-card"><div class="rank-line"><span class="rank"></span><button class="save-button" type="button" aria-label="Save product">☆</button></div><h3 class="product-name"></h3><div class="chips"><span class="purity-chip"></span><span class="category-chip"></span><span class="audience-chip"></span><span class="collection-chip"></span></div><img class="product-image" alt="" style="width:100%;height:140px;object-fit:cover;border-radius:8px;margin:8px 0;display:none;"><div class="numbers"><div><span>Grand total</span><strong class="grand-total"></strong></div><div><span>Gold value</span><strong class="gold-value"></strong></div></div><div class="numbers"><div><span>Weight proxy</span><strong class="weight"></strong></div><div><span>Making + GST</span><strong class="making"></strong></div></div><div class="ratio-row"><div><span>Value ratio</span><strong class="value-ratio"></strong></div><div class="va"><span>VA proxy</span><strong class="va-value"></strong></div></div><a class="product-link" target="_blank" rel="noreferrer">View product <span>↗</span></a></article></template>
   <script src="app.js"></script>
 </body>
 </html>

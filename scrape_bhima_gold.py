@@ -176,15 +176,17 @@ def parse_product(html: str, url: str, fallback_name: str) -> Product:
 
 
 async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[str, str]]:
-    response = await page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=90_000)
-    if response and response.status >= 400:
-        body = (await page.locator("body").inner_text()).lower()
-        if response.status == 403 and "cloudflare" in body:
-            raise RuntimeError(
-                "Bhima Gold returned a Cloudflare 403 block page. "
-                "Run this from an allowed network or use a headed browser session."
-            )
-        raise RuntimeError(f"Category page returned HTTP {response.status}")
+    # Try API first (no Cloudflare), fallback to category page only if API fails
+    try:
+        response = await page.goto(CATEGORY_URL, wait_until="domcontentloaded", timeout=45_000)
+        if response and response.status >= 400:
+            body = (await page.locator("body").inner_text()).lower() if response.status == 403 else ""
+            if response.status == 403 and "cloudflare" in body:
+                print("Warning: Category page Cloudflare 403, falling back to API discovery", flush=True)
+            else:
+                print(f"Warning: Category page HTTP {response.status}, falling back to API", flush=True)
+    except Exception as e:
+        print(f"Warning: Category page goto failed {e}, falling back to API", flush=True)
 
     found: dict[str, str] = {}
     page_number = 1

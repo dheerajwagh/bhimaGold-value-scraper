@@ -1,6 +1,6 @@
 import json, subprocess, re, time
 from pathlib import Path
-ROOT = Path("/tmp/bhima-gold-value-scraper")
+ROOT = Path(__file__).parent
 INPUT = ROOT/"output-full-15"/"bhima_gold_ranked.json"
 def curl_json(url):
     try:

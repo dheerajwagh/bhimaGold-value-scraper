@@ -94,11 +94,17 @@ function render() {
     const dimEl = card.querySelector('.dimensions');
     if (dimEl) {
       const dims = [product.length ? `L:${product.length}` : null, product.width ? `W:${product.width}` : null, product.thickness ? `T:${product.thickness}` : null].filter(Boolean).join(' ');
-      dimEl.textContent = dims || (product.gross_weight ? `${product.gross_weight}g` : '--');
-      dimEl.title = `Length/Width/Thickness`;
+      if (dims) {
+        dimEl.textContent = dims;
+        dimEl.title = `Length/Width/Thickness`;
+      } else {
+        dimEl.textContent = '—';
+        dimEl.title = 'Pending full HTML crawl - auto-refresh will fill';
+        dimEl.parentElement.style.opacity = '0.5';
+      }
     }
     const rateEl = card.querySelector('.rate');
-    if (rateEl) rateEl.textContent = product.rate ? `₹${product.rate}/g` : '--';
+    if (rateEl) rateEl.textContent = product.rate ? `₹${product.rate}/g` : '—';
     card.querySelector('.value-ratio').textContent = ratio(product.value_ratio);
     card.querySelector('.va-value').textContent = va(product.value_ratio);
     const link = card.querySelector('.product-link');

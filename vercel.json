@@ -1,16 +1,8 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/index.py", "use": "@vercel/python" },
-    { "src": "api/gold-rate.py", "use": "@vercel/python" },
-    { "src": "index.html", "use": "@vercel/static" },
-    { "src": "app.js", "use": "@vercel/static" },
-    { "src": "styles.css", "use": "@vercel/static" },
-    { "src": "public/gold_rate.json", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/products", "dest": "api/index.py" },
-    { "src": "/api/gold-rate", "dest": "api/gold-rate.py" },
-    { "src": "/gold_rate.json", "dest": "public/gold_rate.json" }
+  "rewrites": [
+    { "source": "/api/products", "destination": "/api/index.py" },
+    { "source": "/api/gold-rate", "destination": "/api/gold-rate.py" },
+    { "source": "/gold_rate.json", "destination": "/public/gold_rate.json" }
   ]
 }

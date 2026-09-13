@@ -329,7 +329,8 @@ async def scrape_products(
                                         grand = pval/100 if pval>100000 else pval
                                         # estimate gold_value as 92% of grand (approx)
                                         gold_est = round(grand*0.92,2)
-                                        results[index] = Product(fallback_name, url, gold_value=gold_est, grand_total=grand, error="Cloudflare 403 - API fallback (gold est)")
+                                        ratio_est = round(gold_est/grand,6) if grand else None
+                                        results[index] = Product(fallback_name, url, gold_value=gold_est, grand_total=grand, value_ratio=ratio_est, error="Cloudflare 403 - API fallback (gold est)")
                                     except:
                                         results[index] = Product(fallback_name, url, error="Cloudflare 403 - API parse fail")
                                 else:

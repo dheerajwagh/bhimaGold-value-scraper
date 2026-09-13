@@ -156,6 +156,13 @@ async function load() {
     state.source = data.source;
     $('totalCount').textContent = state.products.length.toLocaleString('en-IN');
     $('sourceBadge').textContent = data.source ? `Source: ${data.source}` : 'No data';
+    if (data.last_updated) {
+      const d = new Date(data.last_updated);
+      $('lastUpdatedBadge').textContent = `Updated: ${d.toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST`;
+      $('lastUpdatedBadge').title = `Raw: ${data.last_updated} | ${data.source}`;
+    } else {
+      $('lastUpdatedBadge').textContent = 'Updated: --';
+    }
     populateSelect('puritySelect', state.products.map((p) => p.purity || purityOf(p.name)));
     populateSelect('categorySelect', state.products.map((p) => categoryOf(p.name)));
     populateSelect('audienceSelect', state.products.map((p) => p.audience || audienceOf(p.name)));
@@ -188,5 +195,29 @@ function exportView() {
 $('minRatio')?.addEventListener('input', () => { $('ratioOutput').value = `${$('minRatio').value}%`; $('ratioOutput').textContent = `${$('minRatio').value}%`; render(); });
 $('clearButton')?.addEventListener('click', () => { ['searchInput','minPrice','maxPrice','minWeight','maxWeight'].forEach((id) => { const e=$(id); if(e) e.value=''; }); $('minRatio').value = 0; $('ratioOutput').textContent = '0%'; ['puritySelect','categorySelect','audienceSelect','collectionSelect'].forEach(id=>{ const e=$(id); if(e) e.value=''; }); $('favoritesOnly').checked = false; render(); });
 $('refreshButton')?.addEventListener('click', load);
+$('manualRefreshButton')?.addEventListener('click', async () => {
+  if (!confirm('Trigger live scrape? This runs 30-60 min on GitHub Actions (daily-scrape.yml) and will update all prices/dimensions for 3294 products. Continue?')) return;
+  $('manualRefreshButton').textContent = 'Triggering...';
+  $('manualRefreshButton').disabled = true;
+  try {
+    // Try API dispatch (needs PAT with workflow - will fail without, so fallback to opening Actions page)
+    const res = await fetch('https://api.github.com/repos/dheerajwagh/bhimaGold-value-scraper/actions/workflows/daily-scrape.yml/dispatches', {
+      method: 'POST',
+      headers: {'Accept': 'application/vnd.github.v3+json'},
+      body: JSON.stringify({ref: 'main'})
+    });
+    if (res.ok) {
+      alert('Scrape triggered! Check https://github.com/dheerajwagh/bhimaGold-value-scraper/actions - will auto-deploy to Vercel in ~40 min.');
+    } else {
+      throw new Error('API needs auth');
+    }
+  } catch (e) {
+    window.open('https://github.com/dheerajwagh/bhimaGold-value-scraper/actions/workflows/daily-scrape.yml', '_blank');
+    alert('Opened GitHub Actions. Click "Run workflow" → "Run workflow" to trigger manual scrape.');
+  } finally {
+    $('manualRefreshButton').textContent = '↻ Manual scrape';
+    $('manualRefreshButton').disabled = false;
+  }
+});
 $('exportButton')?.addEventListener('click', exportView);
 load();

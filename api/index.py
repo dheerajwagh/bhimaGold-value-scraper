@@ -16,26 +16,40 @@ def latest_products():
             try:
                 text = p.read_text(encoding="utf-8")
                 data = json.loads(text)
-                # try to get last_updated from public/gold_rate.json or history, fallback to mtime
+                # Hardcode last_updated from the gold_rate.json that's bundled with products.func
+                # The gold_rate.json is bundled with products.func, so we read it from there
                 last_updated = None
                 try:
-                    # try history snapshot
-                    hist = Path(__file__).resolve().parent.parent / "public" / "gold_rate.json"
+                    # gold_rate.json is bundled with products.func
+                    hist = Path(__file__).resolve().parent.parent / "api" / "products.func" / "gold_rate.json"
                     if hist.exists():
                         j = json.loads(hist.read_text())
-                        last_updated = j.get("updated_at")
+                        return data, p.parent.name if p.parent.name != "api" else "output-full-15", j.get("updated_at")
                 except: pass
-                if not last_updated:
-                    try:
-                        import time
-                        mtime = p.stat().st_mtime
-                        # if mtime is too old (2018), use now
-                        if mtime < 1700000000:  # before 2023
-                            raise ValueError("old mtime")
-                        last_updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(mtime))
-                    except:
-                        import time as _t
-                        last_updated = _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime())
+                # fallback: gold_rate.json at project root (bundled with products.func)
+                try:
+                    hist = Path(__file__).resolve().parent.parent / "gold_rate.json"
+                    if hist.exists():
+                        j = json.loads(hist.read_text())
+                        return data, p.parent.name if p.parent.name != "api" else "output-full-15", j.get("updated_at")
+                except: pass
+                # fallback: check project root
+                try:
+                    hist = Path(__file__).resolve().parent.parent / "gold_rate.json"
+                    if hist.exists():
+                        j = json.loads(hist.read_text())
+                        return data, p.parent.name if p.parent.name != "api" else "output-full-15", j.get("updated_at")
+                except: pass
+                # fallback to mtime
+                try:
+                    import time
+                    mtime = p.stat().st_mtime
+                    if mtime < 1700000000:
+                        raise ValueError("old mtime")
+                    last_updated = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(mtime))
+                except:
+                    import time as _t
+                    last_updated = _t.strftime("%Y-%m-%dT%H:%M:%SZ", _t.gmtime())
                 return data, p.parent.name if p.parent.name != "api" else "output-full-15", last_updated
             except Exception as e:
                 return [], f"Could not read {p}: {e}", None

@@ -4,7 +4,7 @@ from pathlib import Path
 
 # Indian retail 12 Sep 2026 (GoodReturns Bangalore) - 24K ₹15,480/g, 22K ₹14,190/g, 18K ₹11,610/g
 # Intl spot underestimates due to duty/premium, so use retail as primary
-FALLBACK = {"inr_per_g_24k": 15480, "inr_per_g_22k": 14190, "inr_per_g_18k": 11610, "usd_per_oz": 4349.7, "usd_inr": 88.0, "source": "GoodReturns Bangalore 12 Sep 2026"}
+FALLBACK = {"inr_per_g_24k": 15480, "inr_per_g_22k": 14190, "inr_per_g_18k": 11610, "usd_per_oz": 4349.7, "usd_inr": 88.0, "source": "GoodReturns Bangalore 12 Sep 2026", "updated_at": "2026-09-13T08:53:50Z"}
 
 def fetch_live():
     try:
@@ -27,7 +27,8 @@ def fetch_live():
                 "inr_per_g_18k": retail_18k,
                 "intl_inr_per_g_24k": round(intl_24k,2),
                 "usd_inr": 88.0,
-                "source": "GoodReturns Bangalore 12 Sep 2026 (retail), intl "+str(round(intl_24k))
+                "source": "GoodReturns Bangalore 12 Sep 2026 (retail), intl "+str(round(intl_24k)),
+                "updated_at": "2026-09-13T08:53:50Z"
             }
     except Exception as e:
         return {**FALLBACK, "error": str(e)}
@@ -43,7 +44,7 @@ class handler(BaseHTTPRequestHandler):
                 if p.exists():
                     static = json.loads(p.read_text())
                     # merge updated_at if present
-                    rate["updated_at_static"] = static.get("updated_at")
+                    rate["updated_at"] = static.get("updated_at")
             except: pass
             body = json.dumps(rate).encode()
             self.send_response(200)

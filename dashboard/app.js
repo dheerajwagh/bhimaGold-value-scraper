@@ -50,8 +50,11 @@ function filteredProducts() {
 function render() {
   const products = filteredProducts();
   $('visibleCount').textContent = products.length.toLocaleString('en-IN');
-  $('bestRatio').textContent = products[0] ? ratio(products[0].value_ratio) : '--';
-  $('bestVa').textContent = products[0] ? va(products[0].value_ratio) : '--';
+  // Best stats from verified (non-estimated) items only - estimates are flat 92%
+  const verified = products.filter((p) => !p.estimated && p.value_ratio != null);
+  const best = verified[0] || products[0];
+  $('bestRatio').textContent = best ? ratio(best.value_ratio) : '--';
+  $('bestVa').textContent = best ? va(best.value_ratio) : '--';
   const grid = $('productGrid');
   if (!products.length) { grid.innerHTML = '<div class="empty">No products match these filters.</div>'; return; }
   grid.innerHTML = '';
@@ -72,6 +75,22 @@ function render() {
     } else {
       colChip.textContent = colText;
       colChip.style.display = '';
+    }
+    const estChip = card.querySelector('.est-chip');
+    if (estChip) {
+      if (product.estimated) {
+        estChip.textContent = 'EST';
+        estChip.title = 'Estimated price (Bhima blocked detail crawl) - gold ≈ 92% of price. Verified deals rank higher.';
+        estChip.style.display = '';
+        estChip.style.borderColor = 'var(--gold)';
+        estChip.style.color = 'var(--gold)';
+      } else if (product.stale) {
+        estChip.textContent = 'PREV';
+        estChip.title = 'From previous verified snapshot - no longer in current listing.';
+        estChip.style.display = '';
+      } else {
+        estChip.style.display = 'none';
+      }
     }
     // image
     const img = card.querySelector('.product-image');
@@ -136,6 +155,8 @@ async function loadGoldRate() {
     if (r && r.inr_per_g_22k) {
       state.goldRate = r;
       $('goldRateBadge').textContent = `Gold 22K: ${money(r.inr_per_g_22k)}/g`;
+      $('lastUpdatedBadge').textContent = `Updated: ${new Date(r.updated_at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST`;
+      $('lastUpdatedBadge').title = `Raw: ${r.updated_at} | ${r.source}`;
       return;
     }
   } catch {}
@@ -144,8 +165,12 @@ async function loadGoldRate() {
     if (r2 && r2.inr_per_g_22k) {
       state.goldRate = r2;
       $('goldRateBadge').textContent = `Gold 22K: ${money(r2.inr_per_g_22k)}/g (${r2.source})`;
+      if (r2.updated_at) {
+        $('lastUpdatedBadge').textContent = `Updated: ${new Date(r2.updated_at).toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST`;
+        $('lastUpdatedBadge').title = `Raw: ${r2.updated_at} | ${r2.source}`;
+      }
     }
-  } catch { $('goldRateBadge').textContent = 'Gold 22K: --'; }
+  } catch { $('goldRateBadge').textContent = 'Gold 22K: --'; $('lastUpdatedBadge').textContent = 'Updated: --'; }
 }
 async function load() {
   $('sourceBadge').textContent = 'Loading data';
@@ -156,22 +181,16 @@ async function load() {
     state.source = data.source;
     $('totalCount').textContent = state.products.length.toLocaleString('en-IN');
     $('sourceBadge').textContent = data.source ? `Source: ${data.source}` : 'No data';
-    if (data.last_updated) {
-      const d = new Date(data.last_updated);
-      $('lastUpdatedBadge').textContent = `Updated: ${d.toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})} IST`;
-      $('lastUpdatedBadge').title = `Raw: ${data.last_updated} | ${data.source}`;
-    } else {
-      $('lastUpdatedBadge').textContent = 'Updated: --';
-    }
     populateSelect('puritySelect', state.products.map((p) => p.purity || purityOf(p.name)));
     populateSelect('categorySelect', state.products.map((p) => categoryOf(p.name)));
     populateSelect('audienceSelect', state.products.map((p) => p.audience || audienceOf(p.name)));
     populateSelect('collectionSelect', state.products.map((p) => collectionOf(p)));
     const invalid = state.products.filter((p) => p.value_ratio == null).length;
-    const withWeight = state.products.filter(p=>p.weight_proxy_g!=null).length;
-    const withMaking = state.products.filter(p=>p.making_charges_proxy!=null).length;
+    const nVerified = state.products.filter((p) => !p.estimated && p.value_ratio != null).length;
+    const nEst = state.products.filter((p) => p.estimated).length;
+    const nStale = state.products.filter((p) => p.stale).length;
     $('notice').hidden = false;
-    $('notice').innerHTML = `${invalid} products could not be parsed. <strong>${withWeight}</strong> with weight proxy (gold value / live 22K rate), <strong>${withMaking}</strong> with making+GST proxy (grand_total - gold_value). History: ${state.products.length} snapshot ${new Date().toLocaleDateString()}. Size not in current API - needs detail scrape.`;
+    $('notice').innerHTML = `<strong>${nVerified}</strong> verified deals (detail-scraped) + <strong>${nEst}</strong> estimates (Bhima blocks detail pages; gold ≈ 92% of price)${nStale ? ` incl. <strong>${nStale}</strong> from previous snapshot` : ''}. Best VA uses verified only. ${invalid} unparsed. Size/dimensions need detail scrape.`;
     await loadGoldRate();
     render();
   } catch (error) {
@@ -182,8 +201,8 @@ async function load() {
 }
 function exportView() {
   const products = filteredProducts();
-  const headers = ['rank','name','url','gold_value','grand_total','value_ratio','va_proxy','weight_g','making_proxy','making_pct','purity','audience','category'];
-  const rows = products.map((p, i) => [i+1, p.name, p.url, p.gold_value, p.grand_total, p.value_ratio, 1-p.value_ratio, p.weight_proxy_g, p.making_charges_proxy, p.making_pct, p.purity, p.audience, p.category_api]);
+  const headers = ['rank','name','url','gold_value','grand_total','value_ratio','va_proxy','weight_g','making_proxy','making_pct','purity','audience','category','estimated','stale'];
+  const rows = products.map((p, i) => [i+1, p.name, p.url, p.gold_value, p.grand_total, p.value_ratio, 1-p.value_ratio, p.weight_proxy_g, p.making_charges_proxy, p.making_pct, p.purity, p.audience, p.category_api, p.estimated ? 'yes' : 'no', p.stale ? 'yes' : 'no']);
   const csv = [headers, ...rows].map((row) => row.map((v) => `"${String(v ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
   const link = document.createElement('a');
   link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));

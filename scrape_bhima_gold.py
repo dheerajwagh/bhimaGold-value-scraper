@@ -19,11 +19,17 @@ from playwright.async_api import Browser, Page, TimeoutError as PlaywrightTimeou
 
 
 CATEGORY_URL = "https://www.bhimagold.com/jewellery/gold"
+EXCLUSIVE_URL = "https://www.bhimagold.com/jewellery/exclusive_offer"
 PRODUCT_API_URL = "https://prod-apis.bhimagold.com/api/app/product/products"
 ORG_ID = "1653277918007"
 PRODUCT_PATH = "/products/"
 # global map for API fallback when Cloudflare blocks HTML
 API_PRODUCT_MAP: dict[str, dict] = {}
+# API categories to scrape
+API_CATEGORIES = [
+    {"listSlug": "gold", "urlSlug": "gold", "category_url": CATEGORY_URL},
+    {"listSlug": "exclusive_offer", "urlSlug": "exclusive_offer", "category_url": EXCLUSIVE_URL},
+]
 MONEY_RE = re.compile(r"(?:₹|Rs\.?|INR)?\s*(\d[\d,]*(?:\.\d{1,2})?)", re.IGNORECASE)
 GOLD_LABEL_RE = re.compile(r"\bgold\s*(?:\d{1,2}\s*k|\d{1,3}\s*kt)?\b", re.IGNORECASE)
 TOTAL_LABEL_RE = re.compile(r"grand\s*total|total\s*amount|payable", re.IGNORECASE)
@@ -99,6 +105,7 @@ def extract_detail(soup: BeautifulSoup, label: str) -> str | None:
         return m.group(1).strip().split("  ")[0]
     return None
 
+
 def parse_weight_value(text: str | None) -> float | None:
     if not text:
         return None
@@ -115,6 +122,7 @@ def parse_weight_value(text: str | None) -> float | None:
         except:
             return None
     return None
+
 
 def parse_product(html: str, url: str, fallback_name: str) -> Product:
     soup = BeautifulSoup(html, "html.parser")
@@ -176,6 +184,7 @@ def parse_product(html: str, url: str, fallback_name: str) -> Product:
                    gross_weight, metal_weight, stone_weight, length, width, thickness,
                    rate, making, gst, discount, subtotal, product_total)
 
+
 async def fetch_product_api(slug: str) -> dict | None:
     # fallback to productList API search for slug - runs in thread to not block
     def _fetch():
@@ -212,46 +221,56 @@ async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[s
 
     found: dict[str, str] = {}
     API_PRODUCT_MAP.clear()
-    page_number = 1
-    api_count = expected_count
-    while len(found) < min(expected_count, api_count):
-        query = urllib.parse.urlencode(
-            {
-                "orgId": ORG_ID,
-                "locale": "en-IN",
-                "country": "en-IN",
-                "pageNumber": str(page_number),
-                "listSlug": "gold",
-                "urlSlug": "gold",
-            }
-        )
-        request = urllib.request.Request(
-            f"{PRODUCT_API_URL}?{query}",
-            headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=30) as response:
-                data = json.load(response).get("data", {})
-        except Exception:
-            break
-        api_count = int(data.get("count") or api_count)
-        items = data.get("productList", [])
-        for item in items:
-            slug = item.get("slug")
-            if slug:
-                url = urljoin(CATEGORY_URL, f"/products/{slug}")
-                found[url] = item.get("title", slug)
-                # store for fallback
-                variant = (item.get("variantItems") or [{}])[0]
-                API_PRODUCT_MAP[url] = {
-                    "price": variant.get("price"),
-                    "special_price": variant.get("priceDiscounted"),
-                    "image": item.get("image") or variant.get("image"),
-                    "category": item.get("CategoryName"),
+
+    # Scrape all API categories
+    for cat in API_CATEGORIES:
+        print(f"Scraping category: {cat['listSlug']}", flush=True)
+        category_found = 0
+        page_number = 1
+        api_count = expected_count
+        while len(found) < min(expected_count, api_count):
+            query = urllib.parse.urlencode(
+                {
+                    "orgId": ORG_ID,
+                    "locale": "en-IN",
+                    "country": "en-IN",
+                    "pageNumber": str(page_number),
+                    "listSlug": cat["listSlug"],
+                    "urlSlug": cat["urlSlug"],
                 }
-        if not items:
-            break
-        page_number += 1
+            )
+            request = urllib.request.Request(
+                f"{PRODUCT_API_URL}?{query}",
+                headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    data = json.load(response).get("data", {})
+            except Exception as e:
+                print(f"Error fetching page {page_number} for {cat['listSlug']}: {e}", flush=True)
+                break
+            api_count = int(data.get("count") or api_count)
+            items = data.get("productList", [])
+            for item in items:
+                slug = item.get("slug")
+                if slug:
+                    url = urljoin(cat["category_url"], f"/products/{slug}")
+                    found[url] = item.get("title", slug)
+                    # store for fallback
+                    variant = (item.get("variantItems") or [{}])[0]
+                    API_PRODUCT_MAP[url] = {
+                        "price": variant.get("price"),
+                        "special_price": variant.get("priceDiscounted"),
+                        "image": item.get("image") or variant.get("image"),
+                        "category": item.get("CategoryName"),
+                    }
+            if not items:
+                break
+            page_number += 1
+            category_found += len(items)
+            if len(found) >= expected_count:
+                break
+        print(f"Category {cat['listSlug']}: found {category_found} products", flush=True)
 
     if found:
         return list(found.items())[:expected_count]
@@ -280,6 +299,27 @@ async def discover_product_urls(page: Page, expected_count: int) -> list[tuple[s
         if url.startswith("http") and PRODUCT_PATH in url:
             found[url] = " ".join(item["name"].split())
     return list(found.items())
+
+
+async def fetch_product_api(slug: str) -> dict | None:
+    # fallback to productList API search for slug - runs in thread to not block
+    def _fetch():
+        try:
+            import urllib.request, urllib.parse, json
+            # try direct productList search via page 1..5 first for speed
+            for page in range(1, 6):
+                q = urllib.parse.urlencode({"orgId": ORG_ID, "locale": "en-IN", "country": "en-IN", "pageNumber": str(page), "listSlug": "gold", "urlSlug": "gold"})
+                req = urllib.request.Request(f"{PRODUCT_API_URL}?{q}", headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = json.load(r).get("data", {})
+                    for item in data.get("productList", []):
+                        if item.get("slug") == slug:
+                            variant = (item.get("variantItems") or [{}])[0]
+                            return {"price": variant.get("price"), "special_price": variant.get("priceDiscounted"), "image": item.get("image")}
+            return None
+        except Exception:
+            return None
+    return await asyncio.to_thread(_fetch)
 
 
 async def scrape_products(
@@ -322,7 +362,6 @@ async def scrape_products(
                             if api_data:
                                 price = api_data.get("special_price") or api_data.get("price")
                                 if price:
-                                    # price is in paise? convert if >10000
                                     try:
                                         pval = float(price)
                                         # API price is in paise (e.g., 4237200 = 42372 INR), convert
@@ -448,10 +487,10 @@ async def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--expected-count", type=int, default=3295)
+    parser.add_argument("--expected-count", type=int, default=9925)
     parser.add_argument("--concurrency", type=int, default=6)
     parser.add_argument("--batch-size", type=int, default=100, help="Save and sort progress after this many products")
-    parser.add_argument("--output-dir", type=Path, default=Path("output"))
+    parser.add_argument("--output-dir", type=Path, default=Path("output-full-15"))
     parser.add_argument("--headed", action="store_true", help="Show Chromium while scraping")
     parser.add_argument(
         "--user-data-dir",
